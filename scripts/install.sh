@@ -187,6 +187,9 @@ RestartSec=10
 [Install]
 WantedBy=graphical.target
 EOF
+# Note: On désactive le service kiosk séparé car on va le lancer via .xinitrc pour plus de stabilité.
+systemctl disable screensplash-kiosk.service 2>/dev/null || true
+
 
 # X11 wrapper config for root
 cat > /etc/X11/Xwrapper.config << EOF
@@ -197,7 +200,8 @@ EOF
 # Enable services
 systemctl daemon-reload
 systemctl enable screensplash.service
-systemctl enable screensplash-kiosk.service
+# systemctl enable screensplash-kiosk.service
+
 
 # ============================================
 # Configure Auto-login and X11
@@ -219,8 +223,27 @@ xset s off
 xset -dpms
 xset s noblank
 unclutter -idle 0.5 -root &
-exec openbox-session
+
+# Lancement de Chromium avec réglages optimisés pour Pi 3B
+exec chromium-browser \\
+    --kiosk \\
+    --noerrdialogs \\
+    --disable-infobars \\
+    --disable-session-crashed-bubble \\
+    --disable-restore-session-state \\
+    --no-first-run \\
+    --start-fullscreen \\
+    --disable-translate \\
+    --disable-features=TranslateUI \\
+    --disable-component-update \\
+    --autoplay-policy=no-user-gesture-required \\
+    --check-for-update-interval=31536000 \\
+    --disable-gpu \\
+    --no-sandbox \\
+    --disable-dev-shm-usage \\
+    http://localhost:5000/player
 EOF
+
 chown $ACTUAL_USER:$ACTUAL_USER "$HOME_DIR/.xinitrc"
 chmod +x "$HOME_DIR/.xinitrc"
 
