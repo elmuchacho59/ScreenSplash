@@ -152,7 +152,7 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-# Kiosk service
+# Kiosk service (Legacy, disabled in favor of .xinitrc)
 cat > /etc/systemd/system/screensplash-kiosk.service << EOF
 [Unit]
 Description=ScreenSplash Kiosk Display
@@ -224,6 +224,11 @@ xset -dpms
 xset s noblank
 unclutter -idle 0.5 -root &
 
+# Attendre que le serveur soit prêt (boucle de sécurité)
+while ! curl -s http://127.0.0.1:5000/api/auth/check > /dev/null; do
+  sleep 1
+done
+
 # Lancement de Chromium avec réglages optimisés pour Pi 3B
 exec chromium-browser \\
     --kiosk \\
@@ -241,14 +246,12 @@ exec chromium-browser \\
     --test-type \\
     --disable-component-update \\
     --autoplay-policy=no-user-gesture-required \\
-
     --check-for-update-interval=31536000 \\
     --disable-gpu \\
     --no-sandbox \\
     --disable-dev-shm-usage \\
-    http://localhost:5000/player
+    http://127.0.0.1:5000/player
 EOF
-
 
 chown $ACTUAL_USER:$ACTUAL_USER "$HOME_DIR/.xinitrc"
 chmod +x "$HOME_DIR/.xinitrc"
