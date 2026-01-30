@@ -233,6 +233,8 @@ exec chromium-browser \\
     --disable-restore-session-state \\
     --no-first-run \\
     --start-fullscreen \\
+    --window-size=1920,1080 \\
+    --window-position=0,0 \\
     --disable-translate \\
     --disable-features=TranslateUI \\
     --disable-component-update \\
@@ -243,6 +245,7 @@ exec chromium-browser \\
     --disable-dev-shm-usage \\
     http://localhost:5000/player
 EOF
+
 
 chown $ACTUAL_USER:$ACTUAL_USER "$HOME_DIR/.xinitrc"
 chmod +x "$HOME_DIR/.xinitrc"

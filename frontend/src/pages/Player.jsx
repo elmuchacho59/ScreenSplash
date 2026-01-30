@@ -297,15 +297,31 @@ function Player() {
                         <div className="loading-spinner" />
                     </div>
                 ) : (
-                    <div style={{ position: 'relative', width: '100%', height: '100%', ...getTransitionStyle() }}>
+                    <div style={{
+                        position: 'relative',
+                        width: '100%',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: '#000',
+                        ...getTransitionStyle()
+                    }}>
                         {currentItem && currentItem.type === 'image' && (
                             <img src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`} alt=""
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                style={{
+                                    maxWidth: '100%',
+                                    maxHeight: '100%',
+                                    width: 'auto',
+                                    height: 'auto',
+                                    objectFit: 'contain',
+                                    display: 'block'
+                                }} />
                         )}
                         {currentItem && currentItem.type === 'video' && (
                             <video ref={videoRef} src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`}
                                 autoPlay muted onEnded={handleVideoEnd} onError={handleVideoError}
-                                style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }} />
                         )}
                         {currentItem && currentItem.type === 'url' && (
                             <iframe src={currentItem.url} title="content"
@@ -314,6 +330,7 @@ function Player() {
                         )}
                         {currentItem && currentItem.type === 'widget' && <InfoPage />}
                     </div>
+
 
                 )}
                 <WidgetOverlay widgets={widgets} />
