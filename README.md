@@ -11,7 +11,9 @@ Application d'affichage dynamique (Digital Signage) open source pour Raspberry P
 - **Gestion des médias** : Images, vidéos et pages web
 - **Playlists** : Création de séquences avec drag-and-drop
 - **Planification** : Programmation horaire avec jours de la semaine
-- **Monitoring** : Suivi en temps réel (CPU, mémoire, température)
+- **Monitoring** : Suivi en temps réel (CPU, mémoire, température, WiFi)
+- **Synchronisation** : Mise à jour instantanée sans rafraîchissement (BroadcastChannel)
+- **WiFi** : Affichage de l'intensité du signal et du SSID
 - **Interface web** : Administration complète depuis n'importe quel appareil
 - **Mode kiosque** : Affichage plein écran optimisé
 
@@ -42,12 +44,13 @@ Application d'affichage dynamique (Digital Signage) open source pour Raspberry P
 
 ```bash
 # Cloner le projet
-git clone https://github.com/yourusername/screensplash.git
-cd screensplash
+git clone https://github.com/elmuchacho59/ScreenSplash.git
+cd ScreenSplash
 
 # Lancer l'installation
 sudo bash scripts/install.sh
 ```
+
 
 ### Installation manuelle
 
