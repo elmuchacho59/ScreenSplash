@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_from_directory, request, jsonify
+from flask import Flask, send_from_directory, send_file, request, jsonify
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 
@@ -66,18 +66,23 @@ def create_app():
     # Gestionnaire d'erreurs 404 pour le SPA (Single Page Application)
     @app.errorhandler(404)
     def handle_404(e):
+        path = request.path.lstrip('/')
+        
         # Si la requête commence par /api ou /media, c'est une vraie 404 backend
         if request.path.startswith('/api') or request.path.startswith('/media'):
             return jsonify({"error": "Resource not found"}), 404
         
-        # Sinon, on vérifie si c'est un fichier statique réel (js, css, etc.)
-        path = request.path.lstrip('/')
+        # On vérifie si c'est un fichier statique réel (js, css, etc.)
         full_path = os.path.join(app.static_folder, path)
-        if path != "" and os.path.exists(full_path):
-            return send_from_directory(app.static_folder, path)
+        if path != "" and os.path.exists(full_path) and os.path.isfile(full_path):
+            return send_file(full_path)
             
-        # Par défaut, on sert index.html pour laisser React Router gérer la route (/player, /settings, etc.)
-        return send_from_directory(app.static_folder, 'index.html')
+        # Par défaut, on sert index.html pour laisser React Router gérer la route
+        index_path = os.path.join(app.static_folder, 'index.html')
+        if os.path.exists(index_path):
+            return send_file(index_path)
+            
+        return jsonify({"error": "Interface non trouvée"}), 404
 
 
 

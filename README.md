@@ -38,6 +38,14 @@ Application d'affichage dynamique (Digital Signage) open source pour Raspberry P
 - Écran HDMI
 - Connexion réseau (Ethernet ou WiFi)
 
+### 🛠️ Préparation du système
+
+Sur une installation fraîche de Raspberry Pi OS (surtout la version Lite), il est possible que `git` ne soit pas installé par défaut. Pour l'installer, exécutez la commande suivante :
+
+```bash
+sudo apt update && sudo apt install -y git
+```
+
 ## 🚀 Installation
 
 ### Installation automatique
@@ -57,7 +65,7 @@ sudo bash scripts/install.sh
 1. **Installer les dépendances système**
 ```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv chromium-browser
+sudo apt install -y git python3 python3-pip python3-venv chromium-browser curl
 ```
 
 2. **Configurer le backend**

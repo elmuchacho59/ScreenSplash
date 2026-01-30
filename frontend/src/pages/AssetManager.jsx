@@ -10,7 +10,8 @@ import {
     Grid,
     List,
     Search,
-    Plus
+    Plus,
+    Eye
 } from 'lucide-react';
 
 
