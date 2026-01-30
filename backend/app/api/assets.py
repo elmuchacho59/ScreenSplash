@@ -29,6 +29,9 @@ def get_file_type(filename):
 def generate_thumbnail(filepath, asset_type):
     """Generate thumbnail for image/video."""
     thumbnails_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'thumbnails')
+    if not os.path.exists(thumbnails_dir):
+        os.makedirs(thumbnails_dir)
+        
     thumb_filename = f"thumb_{uuid.uuid4().hex}.jpg"
     thumb_path = os.path.join(thumbnails_dir, thumb_filename)
     
@@ -40,6 +43,22 @@ def generate_thumbnail(filepath, asset_type):
                     img = img.convert('RGB')
                 img.save(thumb_path, 'JPEG', quality=85)
             return f"thumbnails/{thumb_filename}"
+            
+        elif asset_type == 'video':
+            # Extract frame at 1 second
+            cmd = [
+                'ffmpeg', '-i', filepath,
+                '-ss', '00:00:01',
+                '-vframes', '1',
+                '-q:v', '2',
+                '-s', '320x180',
+                '-f', 'image2',
+                thumb_path,
+                '-y'
+            ]
+            subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+            return f"thumbnails/{thumb_filename}"
+            
     except Exception as e:
         print(f"Error generating thumbnail: {e}")
     return None

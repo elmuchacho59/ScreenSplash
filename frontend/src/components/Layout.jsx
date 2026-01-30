@@ -9,7 +9,6 @@ import {
     Settings,
     Monitor,
     Tv2,
-    Puzzle,
     LogOut
 } from 'lucide-react';
 
@@ -56,8 +55,8 @@ function Layout({ onLogout }) {
         { path: '/assets', icon: Image, label: 'Assets' },
         { path: '/playlists', icon: ListVideo, label: 'Playlists' },
         { path: '/schedules', icon: Calendar, label: 'Planification' },
-        { path: '/widgets', icon: Puzzle, label: 'Widgets' },
         { path: '/settings', icon: Settings, label: 'Paramètres' },
+
     ];
 
     const handleLogout = async () => {

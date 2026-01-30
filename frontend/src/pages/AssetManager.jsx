@@ -9,7 +9,6 @@ import {
     X,
     Grid,
     List,
-    Layout,
     Search,
     Plus
 } from 'lucide-react';
@@ -25,6 +24,7 @@ function AssetManager() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showUploadModal, setShowUploadModal] = useState(false);
     const [showUrlModal, setShowUrlModal] = useState(false);
+    const [previewAsset, setPreviewAsset] = useState(null);
     const [editingAsset, setEditingAsset] = useState(null);
     const [dragOver, setDragOver] = useState(false);
     const fileInputRef = useRef(null);
@@ -83,20 +83,12 @@ function AssetManager() {
         }
     };
 
-    const handleAddInfoPage = async () => {
+    const getUrlDomain = (url) => {
         try {
-            await assetsApi.createUrl({
-
-                name: "Page d'information",
-                type: 'widget',
-                url: 'info_page',
-                duration: 15
-            });
-            fetchAssets();
-            broadcastChange();
-        } catch (error) {
-
-            console.error('Error adding Info Page:', error);
+            const domain = new URL(url).hostname;
+            return domain;
+        } catch (e) {
+            return '';
         }
     };
 
@@ -133,7 +125,6 @@ function AssetManager() {
             case 'image': return <ImageIcon size={16} />;
             case 'video': return <Video size={16} />;
             case 'url': return <Globe size={16} />;
-            case 'widget': return <Layout size={16} />;
             default: return <ImageIcon size={16} />;
         }
     };
@@ -153,10 +144,6 @@ function AssetManager() {
                         <p className="page-subtitle">Gérez vos images, vidéos et URLs</p>
                     </div>
                     <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
-                        <button className="btn btn-secondary" onClick={handleAddInfoPage}>
-                            <Layout size={18} />
-                            Ajouter Page d'info
-                        </button>
                         <button className="btn btn-secondary" onClick={() => setShowUrlModal(true)}>
                             <Globe size={18} />
                             Ajouter URL
@@ -209,10 +196,10 @@ function AssetManager() {
                             onChange={(e) => setFilterType(e.target.value)}
                             style={{ width: 'auto' }}
                         >
+                            <option value="all">Tous les types</option>
                             <option value="image">Images</option>
                             <option value="video">Vidéos</option>
-                            <option value="url">URLs</option>
-                            <option value="widget">Widgets</option>
+                            <option value="url">Liens Web</option>
                         </select>
 
                         {/* View Mode */}
@@ -259,16 +246,28 @@ function AssetManager() {
                         {filteredAssets.map(asset => (
                             <div key={asset.id} className="asset-card">
                                 <div className="asset-thumbnail">
-                                    {asset.type === 'image' && asset.thumbnail_path ? (
+                                    {asset.thumbnail_path ? (
                                         <img src={assetsApi.getThumbnail(asset.id)} alt={asset.name} />
                                     ) : asset.type === 'video' ? (
-                                        <Video size={32} style={{ color: 'var(--color-text-muted)' }} />
-                                    ) : asset.type === 'widget' ? (
-                                        <Layout size={32} style={{ color: 'var(--color-text-muted)' }} />
+                                        <div className="asset-placeholder video">
+                                            <Video size={32} />
+                                        </div>
+                                    ) : asset.type === 'url' ? (
+                                        <div className="asset-placeholder url">
+                                            <img
+                                                src={`https://www.google.com/s2/favicons?domain=${getUrlDomain(asset.path)}&sz=128`}
+                                                alt="favicon"
+                                                onError={(e) => {
+                                                    e.target.onerror = null;
+                                                    e.target.src = '';
+                                                    e.target.parentElement.innerHTML = '<div class="globe-icon">🌐</div>';
+                                                }}
+                                            />
+                                        </div>
                                     ) : (
                                         <Globe size={32} style={{ color: 'var(--color-text-muted)' }} />
                                     )}
-                                    <span className="asset-type-badge">{asset.type === 'widget' ? 'info' : asset.type}</span>
+                                    <span className="asset-type-badge">{asset.type}</span>
                                 </div>
                                 <div className="asset-info">
                                     <div className="asset-name">{asset.name}</div>
@@ -283,7 +282,15 @@ function AssetManager() {
                                     gap: 'var(--spacing-xs)'
                                 }}>
                                     <button
-                                        className="btn btn-icon btn-secondary"
+                                        className="btn-icon"
+                                        title="Prévisualiser"
+                                        onClick={() => setPreviewAsset(asset)}
+                                    >
+                                        <Eye size={18} />
+                                    </button>
+                                    <button
+                                        className="btn-icon"
+                                        title="Modifier"
                                         onClick={() => setEditingAsset(asset)}
                                     >
                                         <Edit2 size={16} />
@@ -338,6 +345,13 @@ function AssetManager() {
                                             <td style={{ padding: 'var(--spacing-md)' }}>{formatDuration(asset.duration)}</td>
                                             <td style={{ padding: 'var(--spacing-md)', textAlign: 'right' }}>
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--spacing-xs)' }}>
+                                                    <button
+                                                        className="btn btn-icon btn-secondary"
+                                                        title="Prévisualiser"
+                                                        onClick={() => setPreviewAsset(asset)}
+                                                    >
+                                                        <Eye size={16} />
+                                                    </button>
                                                     <button className="btn btn-icon btn-secondary" onClick={() => setEditingAsset(asset)}>
                                                         <Edit2 size={16} />
                                                     </button>
@@ -413,6 +427,14 @@ function AssetManager() {
                         asset={editingAsset}
                         onClose={() => setEditingAsset(null)}
                         onSubmit={(data) => handleUpdate(editingAsset.id, data)}
+                    />
+                )}
+
+                {/* Preview Modal */}
+                {previewAsset && (
+                    <PreviewModal
+                        asset={previewAsset}
+                        onClose={() => setPreviewAsset(null)}
                     />
                 )}
             </div>
@@ -555,6 +577,62 @@ function EditModal({ asset, onClose, onSubmit }) {
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    );
+}
+
+function PreviewModal({ asset, onClose }) {
+    const getUrlDomain = (url) => {
+        try {
+            return new URL(url).hostname;
+        } catch (e) {
+            return '';
+        }
+    };
+
+    return (
+        <div className="modal-overlay" onClick={onClose}>
+            <div className="modal preview-modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '900px', width: '90%' }}>
+                <div className="modal-header">
+                    <h2 className="modal-title">Aperçu : {asset.name}</h2>
+                    <button className="modal-close" onClick={onClose}>
+                        <X size={20} />
+                    </button>
+                </div>
+                <div className="modal-body" style={{ padding: 0, background: '#000', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', height: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {asset.type === 'image' && (
+                            <img
+                                src={asset.url || `/api/assets/${asset.id}/file`}
+                                alt={asset.name}
+                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                            />
+                        )}
+                        {asset.type === 'video' && (
+                            <video
+                                src={asset.url || `/api/assets/${asset.id}/file`}
+                                controls
+                                autoPlay
+                                style={{ maxWidth: '100%', maxHeight: '100%', outline: 'none' }}
+                            />
+                        )}
+                        {asset.type === 'url' && (
+                            <iframe
+                                src={asset.path}
+                                title={asset.name}
+                                style={{ width: '100%', height: '100%', border: 'none', background: '#fff' }}
+                            />
+                        )}
+                    </div>
+                </div>
+                {asset.type === 'url' && (
+                    <div className="modal-footer" style={{ justifyContent: 'center', fontSize: '0.85rem' }}>
+                        <span style={{ color: 'var(--color-text-muted)' }}>
+                            Source : {getUrlDomain(asset.path)}
+                        </span>
+                    </div>
+                )}
             </div>
         </div>
     );

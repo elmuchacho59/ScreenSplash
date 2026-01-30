@@ -57,8 +57,7 @@ apt-get install -y -qq \
     python3-pip \
     python3-venv \
     chromium-browser \
-    unclutter \
-    xdotool \
+    unclutter xdotool curl ffmpeg \
     x11-xserver-utils \
     xinit \
     xserver-xorg \

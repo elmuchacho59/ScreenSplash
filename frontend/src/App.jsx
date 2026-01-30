@@ -8,7 +8,6 @@ import ScheduleEditor from './pages/ScheduleEditor';
 import Settings from './pages/Settings';
 import Player from './pages/Player';
 import Login from './pages/Login';
-import WidgetManager from './pages/WidgetManager';
 
 function ProtectedRoutes({ isAuthenticated, isLoading }) {
     if (isLoading) {
@@ -91,7 +90,6 @@ function App() {
                         <Route path="playlists" element={<PlaylistEditor />} />
                         <Route path="playlists/:id" element={<PlaylistEditor />} />
                         <Route path="schedules" element={<ScheduleEditor />} />
-                        <Route path="widgets" element={<WidgetManager />} />
                         <Route path="settings" element={<Settings />} />
                     </Route>
                 </Route>
