@@ -1,0 +1,17 @@
+.env
+*.pyc
+__pycache__/
+venv/
+*.db
+*.sqlite
+node_modules/
+dist/
+.DS_Store
+*.log
+assets/images/*
+assets/videos/*
+assets/thumbnails/*
+!assets/images/.gitkeep
+!assets/videos/.gitkeep
+!assets/thumbnails/.gitkeep
+database/*.db

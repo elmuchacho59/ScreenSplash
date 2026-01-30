@@ -1,0 +1,43 @@
+# ============================================
+# Raspberry Pi config.txt pour ScreenSplash
+# Copier dans /boot/config.txt
+# ============================================
+
+# Mémoire GPU optimisée pour affichage vidéo
+gpu_mem=256
+
+# Désactiver overscan (bords noirs)
+disable_overscan=1
+
+# Forcer la sortie HDMI même sans écran détecté
+hdmi_force_hotplug=1
+
+# Mode audio HDMI
+hdmi_drive=2
+
+# Résolution par défaut (ajuster selon votre écran)
+# hdmi_group=1
+# hdmi_mode=16  # 1080p 60Hz
+
+# Rotation écran (0=normal, 1=90°, 2=180°, 3=270°)
+# display_rotate=0
+
+# Désactiver l'écran de splash Raspberry
+disable_splash=1
+
+# Désactiver le Bluetooth si non utilisé (économie mémoire)
+# dtoverlay=disable-bt
+
+# Désactiver WiFi si utilisation Ethernet (économie mémoire)
+# dtoverlay=disable-wifi
+
+# Overclock modéré pour Pi 3B (optionnel)
+# arm_freq=1300
+# over_voltage=4
+# gpu_freq=500
+
+# Activer l'accélération matérielle pour les vidéos
+dtoverlay=vc4-fkms-v3d
+
+# Limite de température avant throttling
+temp_limit=80

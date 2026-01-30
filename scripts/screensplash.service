@@ -1,0 +1,17 @@
+[Unit]
+Description=ScreenSplash Backend Server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/screensplash/backend
+Environment=PATH=/home/pi/screensplash/backend/venv/bin
+ExecStart=/home/pi/screensplash/backend/venv/bin/python run.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/pi/screensplash/logs/backend.log
+StandardError=append:/home/pi/screensplash/logs/backend-error.log
+
+[Install]
+WantedBy=multi-user.target
