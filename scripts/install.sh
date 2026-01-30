@@ -236,9 +236,12 @@ exec chromium-browser \\
     --window-size=1920,1080 \\
     --window-position=0,0 \\
     --disable-translate \\
-    --disable-features=TranslateUI \\
+    --disable-features=TranslateUI,Translate \\
+    --no-default-browser-check \\
+    --test-type \\
     --disable-component-update \\
     --autoplay-policy=no-user-gesture-required \\
+
     --check-for-update-interval=31536000 \\
     --disable-gpu \\
     --no-sandbox \\
