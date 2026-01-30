@@ -25,13 +25,20 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# Get actual user
+# Get actual user and detect install dir
 ACTUAL_USER="${SUDO_USER:-$USER}"
 HOME_DIR=$(eval echo ~$ACTUAL_USER)
-INSTALL_DIR="$HOME_DIR/screensplash"
+
+# Detect if we are running inside the project folder
+SCRIPT_PATH=$(readlink -f "$0")
+SCRIPT_DIR=$(dirname "$SCRIPT_PATH")
+DETECTED_INSTALL_DIR=$(dirname "$SCRIPT_DIR")
+
+# Fallback to home/screensplash only if not detected
+INSTALL_DIR="${DETECTED_INSTALL_DIR}"
 
 echo -e "${YELLOW}Utilisateur: $ACTUAL_USER${NC}"
-echo -e "${YELLOW}Répertoire d'installation: $INSTALL_DIR${NC}"
+echo -e "${YELLOW}Répertoire détecté: $INSTALL_DIR${NC}"
 echo ""
 
 # ============================================
@@ -157,7 +164,7 @@ Type=simple
 User=$ACTUAL_USER
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=$HOME_DIR/.Xauthority
-ExecStartPre=/bin/sleep 10
+ExecStartPre=/bin/sleep 20
 ExecStart=/usr/bin/chromium-browser \\
     --kiosk \\
     --noerrdialogs \\
