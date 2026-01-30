@@ -1,15 +1,18 @@
 import os
-from flask import Flask
+from flask import Flask, send_from_directory
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
 def create_app():
-    app = Flask(__name__)
+    # Setup static folder path
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    static_folder = os.path.join(basedir, '..', 'static')
+    
+    app = Flask(__name__, static_folder=static_folder, static_url_path='')
     
     # Configuration
-    basedir = os.path.abspath(os.path.dirname(__file__))
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'screensplash-secret-key-2024')
     app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{os.path.join(basedir, '..', '..', 'database', 'screensplash.db')}"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -50,8 +53,23 @@ def create_app():
     app.register_blueprint(widgets_bp, url_prefix='/api/widgets')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     
+    # Static files and catch-all for React Router
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+            return send_from_directory(app.static_folder, path)
+        else:
+            return send_from_directory(app.static_folder, 'index.html')
+
+    # Servir les assets
+    @app.route('/assets/<path:path>')
+    def serve_assets(path):
+        return send_from_directory(app.config['UPLOAD_FOLDER'], path)
+    
     # Create tables
     with app.app_context():
         db.create_all()
     
     return app
+
