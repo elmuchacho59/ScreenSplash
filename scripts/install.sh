@@ -56,6 +56,7 @@ apt-get install -y -qq \
     xinit \
     xserver-xorg \
     xserver-xorg-legacy \
+    openbox \
     fonts-noto \
     libnss3 \
     libatk1.0-0 \
@@ -69,6 +70,7 @@ apt-get install -y -qq \
     libxrandr2 \
     libgbm1 \
     libasound2
+
 
 # ============================================
 # Install Node.js (for building frontend)
