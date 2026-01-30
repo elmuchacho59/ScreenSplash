@@ -57,15 +57,21 @@ def create_app():
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve(path):
-        if path != "" and os.path.exists(os.path.join(app.static_folder, path)):
+        # Prevent collision with /api or /media
+        if path.startswith('api/') or path.startswith('media/'):
+            return None # Let Flask handle it via blueprints/routes
+            
+        full_path = os.path.join(app.static_folder, path)
+        if path != "" and os.path.exists(full_path):
             return send_from_directory(app.static_folder, path)
         else:
             return send_from_directory(app.static_folder, 'index.html')
 
-    # Servir les assets
-    @app.route('/assets/<path:path>')
-    def serve_assets(path):
+    # Servir les fichiers médias (images, vidéos)
+    @app.route('/media/<path:path>')
+    def serve_media(path):
         return send_from_directory(app.config['UPLOAD_FOLDER'], path)
+
     
     # Create tables
     with app.app_context():
