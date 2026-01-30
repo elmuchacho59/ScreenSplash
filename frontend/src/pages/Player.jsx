@@ -298,22 +298,23 @@ function Player() {
                     </div>
                 ) : (
                     <div style={{ position: 'relative', width: '100%', height: '100%', ...getTransitionStyle() }}>
-                        {currentItem.type === 'image' && (
+                        {currentItem && currentItem.type === 'image' && (
                             <img src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`} alt=""
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         )}
-                        {currentItem.type === 'video' && (
+                        {currentItem && currentItem.type === 'video' && (
                             <video ref={videoRef} src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`}
                                 autoPlay muted onEnded={handleVideoEnd} onError={handleVideoError}
                                 style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                         )}
-                        {currentItem.type === 'url' && (
+                        {currentItem && currentItem.type === 'url' && (
                             <iframe src={currentItem.url} title="content"
                                 style={{ width: '100%', height: '100%', border: 'none' }}
                                 sandbox="allow-scripts allow-same-origin" />
                         )}
-                        {currentItem.type === 'widget' && <InfoPage />}
+                        {currentItem && currentItem.type === 'widget' && <InfoPage />}
                     </div>
+
                 )}
                 <WidgetOverlay widgets={widgets} />
             </div>
