@@ -58,21 +58,27 @@ def create_app():
     def serve_media(path):
         return send_from_directory(app.config['UPLOAD_FOLDER'], path)
 
-    # Static files and catch-all for React Router SPA
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>')
-    def serve(path):
-        # 1. Try to serve actual static files (JS, CSS, images in build)
+    # Route de base (sert le dashboard)
+    @app.route('/')
+    def index():
+        return send_from_directory(app.static_folder, 'index.html')
+
+    # Gestionnaire d'erreurs 404 pour le SPA (Single Page Application)
+    @app.errorhandler(404)
+    def handle_404(e):
+        # Si la requête commence par /api ou /media, c'est une vraie 404 backend
+        if request.path.startswith('/api') or request.path.startswith('/media'):
+            return jsonify({"error": "Resource not found"}), 404
+        
+        # Sinon, on vérifie si c'est un fichier statique réel (js, css, etc.)
+        path = request.path.lstrip('/')
         full_path = os.path.join(app.static_folder, path)
         if path != "" and os.path.exists(full_path):
             return send_from_directory(app.static_folder, path)
-        
-        # 2. If it's an API or Media call that reached here, it means it doesn't exist
-        if path.startswith('api/') or path.startswith('media/'):
-            return jsonify({"error": "Resource not found"}), 404
             
-        # 3. For everything else (like /player, /schedules), serve index.html for React Router
+        # Par défaut, on sert index.html pour laisser React Router gérer la route (/player, /settings, etc.)
         return send_from_directory(app.static_folder, 'index.html')
+
 
 
     
