@@ -320,9 +320,10 @@ function Player() {
                         )}
                         {currentItem && currentItem.type === 'video' && (
                             <video ref={videoRef} src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`}
-                                autoPlay muted onEnded={handleVideoEnd} onError={handleVideoError}
+                                autoPlay onEnded={handleVideoEnd} onError={handleVideoError}
                                 style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }} />
                         )}
+
                         {currentItem && currentItem.type === 'url' && (
                             <iframe src={currentItem.url} title="content"
                                 style={{ width: '100%', height: '100%', border: 'none' }}
