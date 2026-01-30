@@ -53,24 +53,27 @@ def create_app():
     app.register_blueprint(widgets_bp, url_prefix='/api/widgets')
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     
-    # Static files and catch-all for React Router
-    @app.route('/', defaults={'path': ''})
-    @app.route('/<path:path>')
-    def serve(path):
-        # Prevent collision with /api or /media
-        if path.startswith('api/') or path.startswith('media/'):
-            return None # Let Flask handle it via blueprints/routes
-            
-        full_path = os.path.join(app.static_folder, path)
-        if path != "" and os.path.exists(full_path):
-            return send_from_directory(app.static_folder, path)
-        else:
-            return send_from_directory(app.static_folder, 'index.html')
-
     # Servir les fichiers médias (images, vidéos)
     @app.route('/media/<path:path>')
     def serve_media(path):
         return send_from_directory(app.config['UPLOAD_FOLDER'], path)
+
+    # Static files and catch-all for React Router SPA
+    @app.route('/', defaults={'path': ''})
+    @app.route('/<path:path>')
+    def serve(path):
+        # 1. Try to serve actual static files (JS, CSS, images in build)
+        full_path = os.path.join(app.static_folder, path)
+        if path != "" and os.path.exists(full_path):
+            return send_from_directory(app.static_folder, path)
+        
+        # 2. If it's an API or Media call that reached here, it means it doesn't exist
+        if path.startswith('api/') or path.startswith('media/'):
+            return jsonify({"error": "Resource not found"}), 404
+            
+        # 3. For everything else (like /player, /schedules), serve index.html for React Router
+        return send_from_directory(app.static_folder, 'index.html')
+
 
     
     # Create tables
