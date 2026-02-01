@@ -14,8 +14,12 @@ import {
     Layout,
     RefreshCw,
     SkipBack,
-    SkipForward
+    SkipForward,
+    Calendar,
+    ChevronDown,
+    ChevronUp
 } from 'lucide-react';
+
 
 
 import {
@@ -138,10 +142,15 @@ function PlaylistEditor() {
         }
     };
 
-    const handleAddAsset = async (assetId) => {
+    const handleAddAsset = async (assetIdOrIds) => {
         if (!selectedPlaylist) return;
         try {
-            await playlistsApi.addAsset(selectedPlaylist.id, assetId);
+            if (Array.isArray(assetIdOrIds)) {
+                if (assetIdOrIds.length === 0) return;
+                await playlistsApi.addAsset(selectedPlaylist.id, { asset_ids: assetIdOrIds });
+            } else {
+                await playlistsApi.addAsset(selectedPlaylist.id, assetIdOrIds);
+            }
             const res = await playlistsApi.getAssets(selectedPlaylist.id);
             setPlaylistAssets(res.data.assets || []);
             broadcastChange();
@@ -453,12 +462,24 @@ function PlaylistEditor() {
                                                     <SortableItem
                                                         key={playlistAsset.id}
                                                         playlistAsset={playlistAsset}
+                                                        playlistId={selectedPlaylist.id}
                                                         index={index}
                                                         onRemove={() => handleRemoveAsset(playlistAsset.id)}
+                                                        onUpdateSchedule={async (data) => {
+                                                            try {
+                                                                await playlistsApi.updateAsset(selectedPlaylist.id, playlistAsset.id, data);
+                                                                const res = await playlistsApi.getAssets(selectedPlaylist.id);
+                                                                setPlaylistAssets(res.data.assets || []);
+                                                                broadcastChange();
+                                                            } catch (error) {
+                                                                console.error('Error updating schedule:', error);
+                                                            }
+                                                        }}
                                                         getTypeIcon={getTypeIcon}
                                                         formatDuration={formatDuration}
                                                     />
                                                 ))}
+
                                             </SortableContext>
                                         </DndContext>
                                     )}
@@ -503,10 +524,24 @@ function PlaylistEditor() {
     );
 }
 
-function SortableItem({ playlistAsset, index, onRemove, getTypeIcon, formatDuration }) {
+function SortableItem({ playlistAsset, playlistId, index, onRemove, onUpdateSchedule, getTypeIcon, formatDuration }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
         id: playlistAsset.id
     });
+    const [showSchedule, setShowSchedule] = useState(false);
+    const [customDuration, setCustomDuration] = useState(playlistAsset.custom_duration || playlistAsset.asset?.duration || 10);
+    const [scheduleData, setScheduleData] = useState({
+        schedule_start_time: playlistAsset.schedule_start_time || '',
+        schedule_end_time: playlistAsset.schedule_end_time || '',
+        schedule_days: playlistAsset.schedule_days || [],
+        schedule_start_date: playlistAsset.schedule_start_date || '',
+        schedule_end_date: playlistAsset.schedule_end_date || ''
+    });
+
+    const DAYS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    const hasSchedule = scheduleData.schedule_start_time || scheduleData.schedule_end_time ||
+        (scheduleData.schedule_days && scheduleData.schedule_days.length > 0) ||
+        scheduleData.schedule_start_date || scheduleData.schedule_end_date;
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -515,50 +550,304 @@ function SortableItem({ playlistAsset, index, onRemove, getTypeIcon, formatDurat
     };
 
     const asset = playlistAsset.asset;
-    const duration = playlistAsset.custom_duration || asset?.duration || 0;
+    const duration = customDuration;
+
+    const handleDurationChange = (newDuration) => {
+        const dur = parseInt(newDuration) || 10;
+        setCustomDuration(dur);
+        onUpdateSchedule({ custom_duration: dur });
+    };
+
+
+    const toggleDay = (dayIndex) => {
+        const currentDays = scheduleData.schedule_days || [];
+        let newDays;
+        if (currentDays.includes(dayIndex)) {
+            newDays = currentDays.filter(d => d !== dayIndex);
+        } else {
+            newDays = [...currentDays, dayIndex].sort((a, b) => a - b);
+        }
+        const newData = { ...scheduleData, schedule_days: newDays };
+        setScheduleData(newData);
+        onUpdateSchedule({ schedule_days: newDays.length > 0 ? newDays : null });
+    };
+
+    const handleTimeChange = (field, value) => {
+        const newData = { ...scheduleData, [field]: value };
+        setScheduleData(newData);
+        onUpdateSchedule({ [field]: value || null });
+    };
+
+    const handleDateChange = (field, value) => {
+        const newData = { ...scheduleData, [field]: value };
+        setScheduleData(newData);
+        onUpdateSchedule({ [field]: value || null });
+    };
+
+    const clearSchedule = () => {
+        setScheduleData({
+            schedule_start_time: '',
+            schedule_end_time: '',
+            schedule_days: [],
+            schedule_start_date: '',
+            schedule_end_date: ''
+        });
+        onUpdateSchedule({
+            schedule_start_time: null,
+            schedule_end_time: null,
+            schedule_days: null,
+            schedule_start_date: null,
+            schedule_end_date: null
+        });
+    };
 
     return (
-        <div ref={setNodeRef} style={style} className="playlist-item">
-            <div {...attributes} {...listeners} className="playlist-item-drag">
-                <GripVertical size={20} />
-            </div>
-            <div style={{
-                width: 32,
-                height: 32,
-                borderRadius: 'var(--radius-sm)',
-                background: 'var(--color-bg-tertiary)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--color-text-muted)',
-                fontWeight: 600,
-                fontSize: '0.85rem'
-            }}>
-                {index + 1}
-            </div>
-            <div className="playlist-item-thumb">
-                {asset?.type === 'image' && asset?.thumbnail_path ? (
-                    <img src={`/api/assets/${asset.id}/thumbnail`} alt="" />
-                ) : (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        {getTypeIcon(asset?.type)}
-                    </div>
-                )}
-            </div>
-            <div className="playlist-item-info">
-                <div className="playlist-item-name">{asset?.name || 'Asset inconnu'}</div>
-                <div className="playlist-item-duration">
-                    {getTypeIcon(asset?.type)} {asset?.type} • {formatDuration(duration)}
+        <div ref={setNodeRef} style={style} className="playlist-item-wrapper">
+            <div className="playlist-item">
+                <div {...attributes} {...listeners} className="playlist-item-drag">
+                    <GripVertical size={20} />
                 </div>
+                <div style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 'var(--radius-sm)',
+                    background: 'var(--color-bg-tertiary)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'var(--color-text-muted)',
+                    fontWeight: 600,
+                    fontSize: '0.85rem'
+                }}>
+                    {index + 1}
+                </div>
+                <div className="playlist-item-thumb">
+                    {asset?.type === 'image' && asset?.thumbnail_path ? (
+                        <img src={`/api/assets/${asset.id}/thumbnail`} alt="" />
+                    ) : (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {getTypeIcon(asset?.type)}
+                        </div>
+                    )}
+                </div>
+                <div className="playlist-item-info">
+                    <div className="playlist-item-name">{asset?.name || 'Asset inconnu'}</div>
+                    <div className="playlist-item-duration">
+                        {getTypeIcon(asset?.type)} {asset?.type} • {formatDuration(duration)}
+                    </div>
+                </div>
+                <div className="playlist-item-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <button
+                        className={`btn btn-icon ${hasSchedule ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => setShowSchedule(!showSchedule)}
+                        title={showSchedule ? "Fermer la planification" : "Planifier cet élément"}
+                    >
+                        <Calendar size={16} />
+                    </button>
+                    <button className="btn btn-icon btn-danger" onClick={onRemove} title="Supprimer">
+                        <Trash2 size={16} />
+                    </button>
+                </div>
+
             </div>
-            <div className="playlist-item-actions">
-                <button className="btn btn-icon btn-danger" onClick={onRemove}>
-                    <Trash2 size={16} />
-                </button>
-            </div>
+
+            {/* Inline Schedule Picker */}
+            {showSchedule && (
+                <div style={{
+                    background: 'var(--color-bg-tertiary)',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    padding: 'var(--spacing-md)',
+                    marginTop: '-4px',
+                    borderTop: '1px dashed var(--color-border)'
+                }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--spacing-md)' }}>
+
+                        {/* Row 1: Duration & Time */}
+                        <div style={{ display: 'flex', gap: 'var(--spacing-lg)', flexWrap: 'wrap' }}>
+                            {/* Custom Duration */}
+                            <div style={{ flex: '0 0 120px' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
+                                    <Clock size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                                    Durée (sec)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    value={customDuration}
+                                    onChange={(e) => handleDurationChange(e.target.value)}
+                                    style={{
+                                        padding: '6px 8px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--color-border)',
+                                        background: 'var(--color-bg-secondary)',
+                                        color: 'var(--color-text-primary)',
+                                        fontSize: '0.85rem',
+                                        width: '100%'
+                                    }}
+                                />
+                            </div>
+
+                            {/* Time Range */}
+                            <div style={{ flex: '1', minWidth: '200px' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
+                                    <Clock size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                                    Plage Horaire
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="time"
+                                        value={scheduleData.schedule_start_time || ''}
+                                        onChange={(e) => handleTimeChange('schedule_start_time', e.target.value)}
+                                        style={{
+                                            padding: '6px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-bg-secondary)',
+                                            color: 'var(--color-text-primary)',
+                                            fontSize: '0.85rem',
+                                            flex: 1
+                                        }}
+                                    />
+                                    <span style={{ color: 'var(--color-text-muted)' }}>à</span>
+                                    <input
+                                        type="time"
+                                        value={scheduleData.schedule_end_time || ''}
+                                        onChange={(e) => handleTimeChange('schedule_end_time', e.target.value)}
+                                        style={{
+                                            padding: '6px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-bg-secondary)',
+                                            color: 'var(--color-text-primary)',
+                                            fontSize: '0.85rem',
+                                            flex: 1
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Row 2: Days & Dates */}
+                        <div style={{ display: 'flex', gap: 'var(--spacing-lg)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                            {/* Days */}
+                            <div style={{ flex: '2', minWidth: '280px' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
+                                    Jours actifs
+                                </label>
+                                <div style={{ display: 'flex', gap: '4px' }}>
+                                    {DAYS.map((day, i) => (
+                                        <button
+                                            key={i}
+                                            type="button"
+                                            onClick={() => toggleDay(i)}
+                                            style={{
+                                                padding: '6px 2px',
+                                                borderRadius: 'var(--radius-sm)',
+                                                border: 'none',
+                                                background: (scheduleData.schedule_days || []).includes(i)
+                                                    ? 'var(--color-accent-primary)'
+                                                    : 'var(--color-bg-secondary)',
+                                                color: (scheduleData.schedule_days || []).includes(i) ? 'white' : 'var(--color-text-muted)',
+                                                cursor: 'pointer',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 500,
+                                                transition: 'all 0.15s',
+                                                flex: 1,
+                                                minWidth: '32px'
+                                            }}
+                                        >
+                                            {day}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Date Range */}
+                            <div style={{ flex: '2', minWidth: '280px' }}>
+                                <label style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', display: 'block', marginBottom: '4px' }}>
+                                    <Calendar size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                                    Période (optionnel)
+                                </label>
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input
+                                        type="date"
+                                        value={scheduleData.schedule_start_date || ''}
+                                        onChange={(e) => handleDateChange('schedule_start_date', e.target.value)}
+                                        style={{
+                                            padding: '6px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-bg-secondary)',
+                                            color: 'var(--color-text-primary)',
+                                            fontSize: '0.8rem',
+                                            flex: 1
+                                        }}
+                                    />
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>au</span>
+                                    <input
+                                        type="date"
+                                        value={scheduleData.schedule_end_date || ''}
+                                        onChange={(e) => handleDateChange('schedule_end_date', e.target.value)}
+                                        style={{
+                                            padding: '6px 8px',
+                                            borderRadius: 'var(--radius-sm)',
+                                            border: '1px solid var(--color-border)',
+                                            background: 'var(--color-bg-secondary)',
+                                            color: 'var(--color-text-primary)',
+                                            fontSize: '0.8rem',
+                                            flex: 1
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Clear Button */}
+                            {hasSchedule && (
+                                <button
+                                    onClick={clearSchedule}
+                                    style={{
+                                        padding: '6px 12px',
+                                        borderRadius: 'var(--radius-sm)',
+                                        border: '1px solid var(--color-border)',
+                                        background: 'transparent',
+                                        color: 'var(--color-text-muted)',
+                                        cursor: 'pointer',
+                                        fontSize: '0.8rem',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        height: '32px'
+                                    }}
+                                >
+                                    <X size={14} />
+                                    Effacer
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    {hasSchedule && (
+                        <div style={{
+                            marginTop: 'var(--spacing-md)',
+                            padding: '8px 12px',
+                            background: 'rgba(99, 102, 241, 0.1)',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.85rem',
+                            color: 'var(--color-accent-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'currentColor' }}></div>
+                            Cet élément s'affichera uniquement selon cette planification
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
+
 
 function CreatePlaylistModal({ onClose, onSubmit }) {
     const [name, setName] = useState('');
@@ -617,20 +906,37 @@ function CreatePlaylistModal({ onClose, onSubmit }) {
 
 function AddAssetModal({ assets, playlistAssets, onClose, onAdd, getTypeIcon }) {
     const [search, setSearch] = useState('');
+    const [selectedIds, setSelectedIds] = useState(new Set());
     const existingIds = new Set(playlistAssets.map(pa => pa.asset_id));
 
     const filteredAssets = assets.filter(a =>
         a.name.toLowerCase().includes(search.toLowerCase()) && !existingIds.has(a.id)
     );
 
+    const toggleSelection = (id) => {
+        const newSet = new Set(selectedIds);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        setSelectedIds(newSet);
+    };
+
+    const handleAddSelected = () => {
+        if (selectedIds.size > 0) {
+            onAdd(Array.from(selectedIds));
+        }
+    };
+
     return (
         <div className="modal-overlay" onClick={onClose}>
-            <div className="modal" style={{ maxWidth: '700px' }} onClick={e => e.stopPropagation()}>
+            <div className="modal" style={{ maxWidth: '700px', display: 'flex', flexDirection: 'column', maxHeight: '85vh' }} onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2 className="modal-title">Ajouter un asset</h2>
+                    <h2 className="modal-title">Ajouter des assets</h2>
                     <button className="modal-close" onClick={onClose}><X size={20} /></button>
                 </div>
-                <div className="modal-body">
+                <div className="modal-body" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                     <input
                         type="text"
                         className="form-input"
@@ -639,56 +945,82 @@ function AddAssetModal({ assets, playlistAssets, onClose, onAdd, getTypeIcon }) 
                         onChange={(e) => setSearch(e.target.value)}
                         style={{ marginBottom: 'var(--spacing-md)' }}
                     />
-                    <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    <div style={{ flex: 1, overflowY: 'auto', paddingRight: '4px' }}>
                         {filteredAssets.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: 'var(--spacing-lg)', color: 'var(--color-text-muted)' }}>
                                 Aucun asset disponible
                             </div>
                         ) : (
-                            filteredAssets.map(asset => (
-                                <div
-                                    key={asset.id}
-                                    onClick={() => onAdd(asset.id)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 'var(--spacing-md)',
-                                        padding: 'var(--spacing-md)',
-                                        borderRadius: 'var(--radius-md)',
-                                        cursor: 'pointer',
-                                        border: '1px solid var(--color-border)',
-                                        marginBottom: 'var(--spacing-sm)',
-                                        transition: 'all var(--transition-fast)'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--color-accent-primary)'}
-                                    onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--color-border)'}
-                                >
-                                    <div style={{
-                                        width: 60,
-                                        height: 40,
-                                        borderRadius: 'var(--radius-sm)',
-                                        background: 'var(--color-bg-tertiary)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        overflow: 'hidden'
-                                    }}>
-                                        {asset.type === 'image' && asset.thumbnail_path ? (
-                                            <img src={`/api/assets/${asset.id}/thumbnail`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        ) : (
-                                            getTypeIcon(asset.type)
-                                        )}
-                                    </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: 500 }}>{asset.name}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
-                                            {asset.type} • {asset.duration}s
+                            filteredAssets.map(asset => {
+                                const isSelected = selectedIds.has(asset.id);
+                                return (
+                                    <div
+                                        key={asset.id}
+                                        onClick={() => toggleSelection(asset.id)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 'var(--spacing-md)',
+                                            padding: 'var(--spacing-md)',
+                                            borderRadius: 'var(--radius-md)',
+                                            cursor: 'pointer',
+                                            border: isSelected ? '1px solid var(--color-accent-primary)' : '1px solid var(--color-border)',
+                                            background: isSelected ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
+                                            marginBottom: 'var(--spacing-sm)',
+                                            transition: 'all var(--transition-fast)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 20,
+                                            height: 20,
+                                            borderRadius: '50%',
+                                            border: isSelected ? '5px solid var(--color-accent-primary)' : '2px solid var(--color-text-muted)',
+                                            marginRight: '8px',
+                                            flexShrink: 0
+                                        }} />
+                                        <div style={{
+                                            width: 60,
+                                            height: 40,
+                                            borderRadius: 'var(--radius-sm)',
+                                            background: 'var(--color-bg-tertiary)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            overflow: 'hidden',
+                                            flexShrink: 0
+                                        }}>
+                                            {asset.type === 'image' && asset.thumbnail_path ? (
+                                                <img src={`/api/assets/${asset.id}/thumbnail`} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            ) : (
+                                                getTypeIcon(asset.type)
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                                                {asset.type} • {asset.duration}s
+                                            </div>
                                         </div>
                                     </div>
-                                    <Plus size={20} style={{ color: 'var(--color-accent-primary)' }} />
-                                </div>
-                            ))
+                                );
+                            })
                         )}
+                    </div>
+                </div>
+                <div className="modal-footer" style={{ borderTop: '1px solid var(--color-border)', marginTop: 0, paddingTop: 'var(--spacing-md)' }}>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>
+                        {selectedIds.size} élément{selectedIds.size > 1 ? 's' : ''} sélectionné{selectedIds.size > 1 ? 's' : ''}
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--spacing-sm)' }}>
+                        <button className="btn btn-secondary" onClick={onClose}>Annuler</button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleAddSelected}
+                            disabled={selectedIds.size === 0}
+                        >
+                            <Plus size={18} />
+                            Ajouter la sélection
+                        </button>
                     </div>
                 </div>
             </div>

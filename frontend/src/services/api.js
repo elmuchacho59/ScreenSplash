@@ -32,8 +32,12 @@ export const playlistsApi = {
     update: (id, data) => api.put(`/playlists/${id}`, data),
     delete: (id) => api.delete(`/playlists/${id}`),
     getAssets: (id) => api.get(`/playlists/${id}/assets`),
-    addAsset: (id, assetId, customDuration = null) =>
-        api.post(`/playlists/${id}/assets`, { asset_id: assetId, custom_duration: customDuration }),
+    addAsset: (id, assetIdOrData, customDuration = null) => {
+        if (assetIdOrData && typeof assetIdOrData === 'object' && assetIdOrData.asset_ids) {
+            return api.post(`/playlists/${id}/assets`, assetIdOrData);
+        }
+        return api.post(`/playlists/${id}/assets`, { asset_id: assetIdOrData, custom_duration: customDuration });
+    },
     removeAsset: (playlistId, playlistAssetId) =>
         api.delete(`/playlists/${playlistId}/assets/${playlistAssetId}`),
     reorderAssets: (id, order) =>

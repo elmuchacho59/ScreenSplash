@@ -54,7 +54,6 @@ function Layout({ onLogout }) {
         { path: '/', icon: LayoutDashboard, label: 'Tableau de bord' },
         { path: '/assets', icon: Image, label: 'Assets' },
         { path: '/playlists', icon: ListVideo, label: 'Playlists' },
-        { path: '/schedules', icon: Calendar, label: 'Planification' },
         { path: '/settings', icon: Settings, label: 'Paramètres' },
 
     ];

@@ -13,6 +13,15 @@ class PlaylistAsset(db.Model):
     # Custom duration override (if None, use asset's default duration)
     custom_duration = db.Column(db.Integer, nullable=True)
     
+    # Per-item schedule fields (optional - if all None, item always displays)
+    schedule_start_time = db.Column(db.Time, nullable=True)  # e.g., 09:00
+    schedule_end_time = db.Column(db.Time, nullable=True)    # e.g., 18:00
+    schedule_days = db.Column(db.String(20), nullable=True)  # e.g., "0,1,2,3,4" (Mon-Fri)
+    
+    # Optional date range (for seasonal/event content)
+    schedule_start_date = db.Column(db.Date, nullable=True)
+    schedule_end_date = db.Column(db.Date, nullable=True)
+    
     asset = db.relationship('Asset', backref='playlist_associations')
     
     def to_dict(self):
@@ -22,8 +31,14 @@ class PlaylistAsset(db.Model):
             'asset_id': self.asset_id,
             'position': self.position,
             'custom_duration': self.custom_duration,
+            'schedule_start_time': self.schedule_start_time.strftime('%H:%M') if self.schedule_start_time else None,
+            'schedule_end_time': self.schedule_end_time.strftime('%H:%M') if self.schedule_end_time else None,
+            'schedule_days': [int(d) for d in self.schedule_days.split(',') if d] if self.schedule_days else None,
+            'schedule_start_date': self.schedule_start_date.isoformat() if self.schedule_start_date else None,
+            'schedule_end_date': self.schedule_end_date.isoformat() if self.schedule_end_date else None,
             'asset': self.asset.to_dict() if self.asset else None
         }
+
 
 
 class Asset(db.Model):

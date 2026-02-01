@@ -64,25 +64,59 @@ def get_current_content():
     
     items = []
     for pa in playlist_assets:
-        if pa.asset and pa.asset.is_active:
-            duration = pa.custom_duration if pa.custom_duration else pa.asset.duration
-            item = {
-                'id': pa.id,
-                'asset_id': pa.asset.id,
-                'type': pa.asset.type,
-                'name': pa.asset.name,
-                'path': pa.asset.path,
-                'duration': duration,
-                'position': pa.position
-            }
+        if not pa.asset or not pa.asset.is_active:
+            continue
+        
+        # Check per-item schedule if defined
+        if pa.schedule_start_time or pa.schedule_end_time or pa.schedule_days or pa.schedule_start_date or pa.schedule_end_date:
+            # Check date range first
+            if pa.schedule_start_date and current_date < pa.schedule_start_date:
+                continue
+            if pa.schedule_end_date and current_date > pa.schedule_end_date:
+                continue
             
-            # Add full URL for files
-            if pa.asset.type != 'url':
-                item['url'] = f"/api/assets/{pa.asset.id}/file"
-            else:
-                item['url'] = pa.asset.path
+            # Check day of week
+            if pa.schedule_days:
+                allowed_days = [int(d) for d in pa.schedule_days.split(',') if d]
+                if current_day not in allowed_days:
+                    continue
             
-            items.append(item)
+            # Check time range
+            if pa.schedule_start_time and pa.schedule_end_time:
+                if pa.schedule_start_time <= pa.schedule_end_time:
+                    # Normal range (e.g., 09:00-18:00)
+                    if not (pa.schedule_start_time <= current_time <= pa.schedule_end_time):
+                        continue
+                else:
+                    # Overnight range (e.g., 22:00-06:00)
+                    if not (current_time >= pa.schedule_start_time or current_time <= pa.schedule_end_time):
+                        continue
+            elif pa.schedule_start_time:
+                if current_time < pa.schedule_start_time:
+                    continue
+            elif pa.schedule_end_time:
+                if current_time > pa.schedule_end_time:
+                    continue
+        
+        duration = pa.custom_duration if pa.custom_duration else pa.asset.duration
+        item = {
+            'id': pa.id,
+            'asset_id': pa.asset.id,
+            'type': pa.asset.type,
+            'name': pa.asset.name,
+            'path': pa.asset.path,
+            'duration': duration,
+            'position': pa.position
+        }
+        
+        # Add full URL for files
+        if pa.asset.type != 'url':
+            item['url'] = f"/api/assets/{pa.asset.id}/file"
+        else:
+            item['url'] = pa.asset.path
+        
+        items.append(item)
+
     
     return jsonify({
         'playlist': {

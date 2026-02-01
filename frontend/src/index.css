@@ -656,6 +656,15 @@ select {
   gap: var(--spacing-xs);
 }
 
+.playlist-item-wrapper {
+  margin-bottom: var(--spacing-sm);
+}
+
+.playlist-item-wrapper .playlist-item {
+  margin-bottom: 0;
+}
+
+
 /* ===================================
    Schedule Calendar
    =================================== */

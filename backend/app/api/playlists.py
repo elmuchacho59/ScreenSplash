@@ -112,30 +112,49 @@ def get_playlist_assets(playlist_id):
 
 @playlists_bp.route('/<int:playlist_id>/assets', methods=['POST'])
 def add_asset_to_playlist(playlist_id):
-    """Add asset to playlist."""
+    """Add asset to playlist (single or bulk)."""
     playlist = Playlist.query.get_or_404(playlist_id)
     data = request.get_json()
     
-    if not data or not data.get('asset_id'):
-        return jsonify({'error': 'asset_id is required'}), 400
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     
-    asset = Asset.query.get_or_404(data['asset_id'])
+    asset_ids = []
+    if 'asset_ids' in data and isinstance(data['asset_ids'], list):
+        asset_ids = data['asset_ids']
+    elif 'asset_id' in data:
+        asset_ids = [data['asset_id']]
+    else:
+        return jsonify({'error': 'asset_id or asset_ids is required'}), 400
     
     # Get the next position
     max_position = db.session.query(db.func.max(PlaylistAsset.position))\
         .filter(PlaylistAsset.playlist_id == playlist_id).scalar() or -1
     
-    playlist_asset = PlaylistAsset(
-        playlist_id=playlist_id,
-        asset_id=asset.id,
-        position=max_position + 1,
-        custom_duration=data.get('custom_duration')
-    )
+    added_assets = []
+    for i, asset_id in enumerate(asset_ids):
+        asset = Asset.query.get(asset_id)
+        if not asset:
+            continue
+            
+        playlist_asset = PlaylistAsset(
+            playlist_id=playlist_id,
+            asset_id=asset.id,
+            position=max_position + 1 + i,
+            custom_duration=data.get('custom_duration')
+        )
+        db.session.add(playlist_asset)
+        added_assets.append(playlist_asset)
     
-    db.session.add(playlist_asset)
     db.session.commit()
     
-    return jsonify(playlist_asset.to_dict()), 201
+    if 'asset_ids' in data:
+        return jsonify({'message': f'{len(added_assets)} assets added', 'count': len(added_assets)}), 201
+
+    if not added_assets:
+        return jsonify({'error': 'Asset not found'}), 404
+    
+    return jsonify(added_assets[0].to_dict()), 201
 
 
 @playlists_bp.route('/<int:playlist_id>/assets/<int:playlist_asset_id>', methods=['DELETE'])
@@ -187,7 +206,9 @@ def reorder_playlist_assets(playlist_id):
 
 @playlists_bp.route('/<int:playlist_id>/assets/<int:playlist_asset_id>', methods=['PUT'])
 def update_playlist_asset(playlist_id, playlist_asset_id):
-    """Update playlist asset (e.g., custom duration)."""
+    """Update playlist asset (custom duration, schedule)."""
+    from datetime import datetime
+    
     playlist_asset = PlaylistAsset.query.filter_by(
         id=playlist_asset_id, playlist_id=playlist_id
     ).first_or_404()
@@ -197,6 +218,40 @@ def update_playlist_asset(playlist_id, playlist_asset_id):
     if 'custom_duration' in data:
         playlist_asset.custom_duration = data['custom_duration']
     
+    # Schedule time fields
+    if 'schedule_start_time' in data:
+        if data['schedule_start_time']:
+            playlist_asset.schedule_start_time = datetime.strptime(data['schedule_start_time'], '%H:%M').time()
+        else:
+            playlist_asset.schedule_start_time = None
+            
+    if 'schedule_end_time' in data:
+        if data['schedule_end_time']:
+            playlist_asset.schedule_end_time = datetime.strptime(data['schedule_end_time'], '%H:%M').time()
+        else:
+            playlist_asset.schedule_end_time = None
+    
+    # Schedule days (array -> comma-separated string)
+    if 'schedule_days' in data:
+        if data['schedule_days'] and len(data['schedule_days']) > 0:
+            playlist_asset.schedule_days = ','.join(str(d) for d in data['schedule_days'])
+        else:
+            playlist_asset.schedule_days = None
+    
+    # Date range fields
+    if 'schedule_start_date' in data:
+        if data['schedule_start_date']:
+            playlist_asset.schedule_start_date = datetime.strptime(data['schedule_start_date'], '%Y-%m-%d').date()
+        else:
+            playlist_asset.schedule_start_date = None
+            
+    if 'schedule_end_date' in data:
+        if data['schedule_end_date']:
+            playlist_asset.schedule_end_date = datetime.strptime(data['schedule_end_date'], '%Y-%m-%d').date()
+        else:
+            playlist_asset.schedule_end_date = None
+    
     db.session.commit()
     
     return jsonify(playlist_asset.to_dict())
+
