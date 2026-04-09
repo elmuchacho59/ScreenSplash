@@ -180,6 +180,17 @@ class SystemConfig(db.Model):
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
 
+    @classmethod
+    def trigger_player_refresh(cls):
+        """Update the player_refresh_token to force connected screens to reload immediately."""
+        import time
+        config = cls.query.get('player_refresh_token')
+        if not config:
+            config = cls(key='player_refresh_token')
+            db.session.add(config)
+        config.value = str(int(time.time() * 1000))
+        db.session.commit()
+
 
 class ActivityLog(db.Model):
     __tablename__ = 'activity_logs'

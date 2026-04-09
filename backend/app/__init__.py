@@ -29,6 +29,16 @@ def create_app():
     CORS(app, origins="*", supports_credentials=True)
     db.init_app(app)
     
+    from sqlalchemy import event
+    from sqlalchemy.engine import Engine
+
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        if app.config['SQLALCHEMY_DATABASE_URI'].startswith('sqlite:'):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+    
     # Ensure directories exist
     os.makedirs(os.path.join(basedir, '..', '..', 'database'), exist_ok=True)
     os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)

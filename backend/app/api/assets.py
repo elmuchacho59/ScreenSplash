@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify, current_app, send_from_directory
 from werkzeug.utils import secure_filename
 from PIL import Image
 from app import db
-from app.models import Asset, ActivityLog
+from app.models import Asset, ActivityLog, SystemConfig
 
 assets_bp = Blueprint('assets', __name__)
 
@@ -214,6 +214,8 @@ def update_asset(asset_id):
     db.session.add(log)
     db.session.commit()
     
+    SystemConfig.trigger_player_refresh()
+    
     return jsonify(asset.to_dict())
 
 
@@ -241,6 +243,8 @@ def delete_asset(asset_id):
     
     db.session.delete(asset)
     db.session.commit()
+    
+    SystemConfig.trigger_player_refresh()
     
     return jsonify({'message': 'Asset deleted successfully'})
 

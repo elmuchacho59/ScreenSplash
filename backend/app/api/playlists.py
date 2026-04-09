@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app import db
-from app.models import Playlist, PlaylistAsset, Asset, ActivityLog
+from app.models import Playlist, PlaylistAsset, Asset, ActivityLog, SystemConfig
 
 playlists_bp = Blueprint('playlists', __name__)
 
@@ -148,6 +148,8 @@ def add_asset_to_playlist(playlist_id):
     
     db.session.commit()
     
+    SystemConfig.trigger_player_refresh()
+    
     if 'asset_ids' in data:
         return jsonify({'message': f'{len(added_assets)} assets added', 'count': len(added_assets)}), 201
 
@@ -175,6 +177,8 @@ def remove_asset_from_playlist(playlist_id, playlist_asset_id):
     
     db.session.commit()
     
+    SystemConfig.trigger_player_refresh()
+    
     return jsonify({'message': 'Asset removed from playlist'})
 
 
@@ -200,6 +204,8 @@ def reorder_playlist_assets(playlist_id):
                      entity_id=playlist_id, details=f"Assets reordered")
     db.session.add(log)
     db.session.commit()
+    
+    SystemConfig.trigger_player_refresh()
     
     return jsonify({'message': 'Playlist reordered successfully'})
 
@@ -252,6 +258,8 @@ def update_playlist_asset(playlist_id, playlist_asset_id):
             playlist_asset.schedule_end_date = None
     
     db.session.commit()
+    
+    SystemConfig.trigger_player_refresh()
     
     return jsonify(playlist_asset.to_dict())
 
