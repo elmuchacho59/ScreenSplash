@@ -203,9 +203,37 @@ systemctl enable screensplash.service
 
 
 # ============================================
+# Configure Boot Options and HDMI
+# ============================================
+echo -e "${GREEN}[8/9] Configuration des options de démarrage et HDMI...${NC}"
+
+# Determine boot config file
+BOOT_CONFIG="/boot/config.txt"
+if [ -f "/boot/firmware/config.txt" ]; then
+    BOOT_CONFIG="/boot/firmware/config.txt"
+fi
+
+# Force HDMI output
+if grep -q "^#.*hdmi_force_hotplug=1" "$BOOT_CONFIG" || grep -q "^#hdmi_force_hotplug=1" "$BOOT_CONFIG"; then
+    sed -i 's/^#\s*hdmi_force_hotplug=1/hdmi_force_hotplug=1/' "$BOOT_CONFIG"
+elif ! grep -q "^hdmi_force_hotplug=1" "$BOOT_CONFIG"; then
+    echo "hdmi_force_hotplug=1" >> "$BOOT_CONFIG"
+fi
+
+# Disable Overscan
+if grep -q "^#.*disable_overscan=1" "$BOOT_CONFIG" || grep -q "^#disable_overscan=1" "$BOOT_CONFIG"; then
+    sed -i 's/^#\s*disable_overscan=1/disable_overscan=1/' "$BOOT_CONFIG"
+elif ! grep -q "^disable_overscan=1" "$BOOT_CONFIG"; then
+    echo "disable_overscan=1" >> "$BOOT_CONFIG"
+fi
+
+# ============================================
 # Configure Auto-login and X11
 # ============================================
-echo -e "${GREEN}[8/8] Configuration du démarrage automatique...${NC}"
+echo -e "${GREEN}[9/9] Configuration du démarrage automatique...${NC}"
+
+# Configure le mode de démarrage par défaut pour éviter un blocage GUI
+systemctl set-default multi-user.target
 
 # Auto-login on tty1
 mkdir -p /etc/systemd/system/getty@tty1.service.d/
@@ -284,6 +312,6 @@ echo ""
 echo "Accédez à l'interface d'administration:"
 echo "  http://$(hostname -I | awk '{print $1}'):5000"
 echo ""
-echo "Redémarrez pour activer l'affichage automatique:"
+echo "Redémarrez obligatoirement pour activer l'affichage automatique et l'HDMI:"
 echo "  sudo reboot"
 echo ""

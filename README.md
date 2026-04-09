@@ -204,6 +204,19 @@ npm run dev
 
 Le frontend sera accessible sur `http://localhost:5173` avec proxy vers le backend.
 
+## 🚑 Dépannage (Écran Noir / HDMI)
+
+Si l'écran de votre Raspberry Pi reste noir après l'installation, vérifiez ces 3 points :
+
+1. **Redémarrage requis** : Le script configure un démarrage automatique (`autologin` + `.xinitrc`). Ce mode ne devient actif **qu'après un redémarrage**.
+   ```bash
+   sudo reboot
+   ```
+2. **Forcer le port HDMI si débranché** : Lors d'un démarrage sans écran branché, le Pi désactive le port. Le script d'installation configure `hdmi_force_hotplug=1`, mais si vous venez d'allumer l'écran, vous devrez redémarrer.
+3. **Erreur d'Auto-Login** : Si vous vous retrouvez sur une invite de commande (console) vous demandant un login/mot de passe :
+   - Tapez `sudo raspi-config`
+   - Allez dans `1 System Options` > `S5 Boot / Auto Login` > Choisissez `B2 Console Autologin`.
+
 ## 📝 Licence
 
 MIT License - Voir [LICENSE](LICENSE)
