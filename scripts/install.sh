@@ -52,11 +52,19 @@ apt-get upgrade -y -qq
 # Install Dependencies
 # ============================================
 echo -e "${GREEN}[2/8] Installation des dépendances...${NC}"
+
+CHROMIUM_PKG="chromium-browser"
+CHROMIUM_CMD="chromium-browser"
+if ! apt-cache pkgnames | grep -q "^chromium-browser$"; then
+    CHROMIUM_PKG="chromium"
+    CHROMIUM_CMD="chromium"
+fi
+
 apt-get install -y -qq \
     python3 \
     python3-pip \
     python3-venv \
-    chromium-browser \
+    $CHROMIUM_PKG \
     unclutter xdotool curl ffmpeg \
     x11-xserver-utils \
     xinit \
@@ -164,7 +172,7 @@ User=$ACTUAL_USER
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=$HOME_DIR/.Xauthority
 ExecStartPre=/bin/sleep 20
-ExecStart=/usr/bin/chromium-browser \\
+ExecStart=/usr/bin/$CHROMIUM_CMD \\
     --kiosk \\
     --noerrdialogs \\
     --disable-infobars \\
@@ -257,7 +265,7 @@ while ! curl -s http://127.0.0.1:5000/api/auth/check > /dev/null; do
 done
 
 # Lancement de Chromium avec réglages optimisés pour Pi 3B
-exec chromium-browser \\
+exec $CHROMIUM_CMD \\
     --kiosk \\
     --noerrdialogs \\
     --disable-infobars \\
