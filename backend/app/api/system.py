@@ -3,6 +3,8 @@ import platform
 import socket
 import psutil
 import subprocess
+import threading
+import time
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from app import db
@@ -278,3 +280,36 @@ def health_check():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat()
     })
+
+@system_bp.route('/update', methods=['POST'])
+def trigger_system_update():
+    """Trigger an OTA update by calling the update.sh script and restarting."""
+    try:
+        basedir = os.path.abspath(os.path.dirname(__file__))
+        script_path = os.path.join(basedir, '..', '..', '..', 'scripts', 'update.sh')
+        script_path = os.path.normpath(script_path)
+        
+        if os.path.exists(script_path):
+            # Run bash script synchronously
+            # For Windows testing we might skip this or handle git bash
+            result = subprocess.run(['bash', script_path], capture_output=True, text=True)
+            if result.returncode != 0:
+                print(f"[OTA Error] {result.stderr}")
+                return jsonify({'error': 'Update failed', 'details': result.stderr}), 500
+        else:
+            return jsonify({'error': 'Update script not found'}), 404
+            
+        def delayed_restart():
+            time.sleep(2)
+            os._exit(0) # Lets systemd restart it
+
+        threading.Thread(target=delayed_restart).start()
+
+        log = ActivityLog(action='system_update', entity_type='system', details="Started OTA update")
+        db.session.add(log)
+        db.session.commit()
+
+        return jsonify({'message': 'Mise à jour réussie. Redémarrage du service...'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -14,6 +14,7 @@ function Settings() {
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState(null);
     const [status, setStatus] = useState(null);
+    const [updating, setUpdating] = useState(false);
 
 
     // Password state
@@ -80,6 +81,32 @@ function Settings() {
             setMessage({ type: 'error', text: 'Erreur lors de l\'enregistrement' });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleUpdateSystem = async () => {
+        if (!window.confirm('Voulez-vous vraiment lancer la mise à jour ? \nCela va télécharger la dernière version et redémarrer la machine. L\'écran s\'éteindra environ 15 secondes.')) return;
+        
+        setUpdating(true);
+        setMessage({ type: 'success', text: 'Mise à jour en cours. Veuillez patienter...' });
+        
+        try {
+            const res = await fetch('/api/system/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            
+            if (res.ok) {
+                setMessage({ type: 'success', text: 'Mise à jour terminée. Redémarrage du système...' });
+                setTimeout(() => window.location.reload(), 15000);
+            } else {
+                setMessage({ type: 'error', text: data.error || 'Erreur inconnue' });
+                setUpdating(false);
+            }
+        } catch (err) {
+            setMessage({ type: 'success', text: 'Le système redémarre...' });
+            setTimeout(() => window.location.reload(), 15000);
         }
     };
 
@@ -498,6 +525,41 @@ function Settings() {
                                 fontSize: '0.85rem'
                             }}>
                                 <strong>Astuce:</strong> Appuyez sur F11 pour passer en mode plein écran
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Update System */}
+                    <div className="card">
+                        <div className="card-header">
+                            <h3 className="card-title">Mise à jour (OTA)</h3>
+                        </div>
+                        <div className="card-body">
+                            <p style={{ color: 'var(--color-text-secondary)', marginBottom: 'var(--spacing-md)' }}>
+                                Télécharger et installer automatiquement la dernière version du code via GitHub.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={handleUpdateSystem}
+                                disabled={updating}
+                                className="btn btn-lg"
+                                style={{ width: '100%', justifyContent: 'center', backgroundColor: 'var(--color-primary)', color: 'white' }}
+                            >
+                                {updating ? (
+                                    <><RefreshCw size={20} className="spin" /> Mise à jour...</>
+                                ) : (
+                                    <><RefreshCw size={20} /> Rechercher & Installer</>
+                                )}
+                            </button>
+                            <div style={{
+                                marginTop: 'var(--spacing-lg)',
+                                padding: 'var(--spacing-md)',
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                borderLeft: '3px solid var(--color-warning)',
+                                borderRadius: 'var(--radius-md)',
+                                fontSize: '0.85rem'
+                            }}>
+                                <strong>Attention :</strong> Le redémarrage peut prendre jusqu'à 30 secondes. Ne débranchez pas la prise.
                             </div>
                         </div>
                     </div>

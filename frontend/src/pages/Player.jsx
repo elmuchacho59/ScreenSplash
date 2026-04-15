@@ -9,7 +9,7 @@ function Player() {
     const [items, setItems] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [playlist, setPlaylist] = useState(null);
-    const [transitioning, setTransitioning] = useState(false);
+    const [layers, setLayers] = useState([null, null]);
     const [error, setError] = useState(null);
     const [config, setConfig] = useState({
         display_rotation: '0',
@@ -82,16 +82,11 @@ function Player() {
 
     // Advance to next item
     const advanceToNext = useCallback(() => {
-        const duration = parseInt(config.transition_duration) || 500;
-        setTransitioning(true);
-        setTimeout(() => {
-            setCurrentIndex(prev => {
-                if (itemsRef.current.length === 0) return 0;
-                return (prev + 1) % itemsRef.current.length;
-            });
-            setTransitioning(false);
-        }, duration);
-    }, [config.transition_duration]);
+        setCurrentIndex(prev => {
+            if (itemsRef.current.length === 0) return 0;
+            return (prev + 1) % itemsRef.current.length;
+        });
+    }, []);
 
     // Initial fetch and polling
     useEffect(() => {
@@ -147,14 +142,24 @@ function Player() {
         };
     }, [fetchContent, fetchConfig, fetchWidgets, advanceToNext]);
 
-    // Handle item changes
+    // Handle item changes and true cross-fading layers
+    const currentLayer = currentIndex % 2;
+    
     useEffect(() => {
         if (items.length > 0) {
-            setCurrentItem(items[currentIndex]);
+            const newItem = items[currentIndex];
+            setCurrentItem(newItem);
+            
+            setLayers(prev => {
+                const newLayers = [...prev];
+                newLayers[currentLayer] = newItem;
+                return newLayers;
+            });
+            
             const nextIdx = (currentIndex + 1) % items.length;
             setNextItem(items[nextIdx]);
         }
-    }, [items, currentIndex]);
+    }, [items, currentIndex, currentLayer]);
 
     // Handle auto-advancement
     useEffect(() => {
@@ -243,12 +248,31 @@ function Player() {
         left: isRotated ? `calc(50vw - 50vh)` : 0
     };
 
-    const getTransitionStyle = () => {
+    const getTransitionStyle = (layerIndex) => {
         const effect = config.transition_effect || 'fade';
         const duration = parseInt(config.transition_duration) || 500;
-        if (effect === 'none') return { opacity: transitioning ? 0 : 1 };
-        if (effect === 'fade') return { opacity: transitioning ? 0 : 1, transition: `opacity ${duration}ms ease-in-out` };
-        return { opacity: 1 };
+        const isActive = currentLayer === layerIndex;
+
+        const baseStyle = {
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: `all ${duration}ms ease-in-out`,
+            opacity: isActive ? 1 : 0,
+            zIndex: isActive ? 10 : 1
+        };
+
+        if (effect === 'none') {
+            baseStyle.transition = 'none';
+        } else if (effect === 'slide') {
+            baseStyle.transform = isActive ? 'translateX(0)' : 'translateX(-50%)';
+        } else if (effect === 'zoom') {
+            baseStyle.transform = isActive ? 'scale(1)' : 'scale(1.2)';
+        }
+        
+        return baseStyle;
     };
 
     return (
@@ -301,35 +325,41 @@ function Player() {
                         position: 'relative',
                         width: '100%',
                         height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
                         background: '#000',
-                        ...getTransitionStyle()
+                        overflow: 'hidden'
                     }}>
-                        {currentItem && currentItem.type === 'image' && (
-                            <img src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`} alt=""
-                                style={{
-                                    maxWidth: '100%',
-                                    maxHeight: '100%',
-                                    width: 'auto',
-                                    height: 'auto',
-                                    objectFit: 'contain',
-                                    display: 'block'
-                                }} />
-                        )}
-                        {currentItem && currentItem.type === 'video' && (
-                            <video ref={videoRef} src={currentItem.url || `/api/assets/${currentItem.asset_id}/file`}
-                                autoPlay onEnded={handleVideoEnd} onError={handleVideoError}
-                                style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }} />
-                        )}
-
-                        {currentItem && currentItem.type === 'url' && (
-                            <iframe src={currentItem.url} title="content"
-                                style={{ width: '100%', height: '100%', border: 'none' }}
-                                sandbox="allow-scripts allow-same-origin" />
-                        )}
-                        {currentItem && currentItem.type === 'widget' && <InfoPage />}
+                        {layers.map((layerItem, idx) => (
+                            <div key={`layer-${idx}`} style={getTransitionStyle(idx)}>
+                                {layerItem && layerItem.type === 'image' && (
+                                    <img src={layerItem.url || `/api/assets/${layerItem.asset_id}/file`} alt=""
+                                        style={{
+                                            maxWidth: '100%',
+                                            maxHeight: '100%',
+                                            width: 'auto',
+                                            height: 'auto',
+                                            objectFit: 'contain',
+                                            display: 'block'
+                                        }} />
+                                )}
+                                {layerItem && layerItem.type === 'video' && (
+                                    <video 
+                                        ref={idx === currentLayer ? videoRef : null} 
+                                        src={layerItem.url || `/api/assets/${layerItem.asset_id}/file`}
+                                        autoPlay={idx === currentLayer}
+                                        muted={idx !== currentLayer}
+                                        onEnded={idx === currentLayer ? handleVideoEnd : undefined} 
+                                        onError={idx === currentLayer ? handleVideoError : undefined}
+                                        style={{ maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto', objectFit: 'contain' }} 
+                                    />
+                                )}
+                                {layerItem && layerItem.type === 'url' && (
+                                    <iframe src={layerItem.url} title={`content-${idx}`}
+                                        style={{ width: '100%', height: '100%', border: 'none', background: 'white' }}
+                                        sandbox="allow-scripts allow-same-origin allow-popups" />
+                                )}
+                                {layerItem && layerItem.type === 'widget' && <InfoPage />}
+                            </div>
+                        ))}
                     </div>
 
 
