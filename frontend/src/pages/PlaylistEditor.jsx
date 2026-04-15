@@ -40,6 +40,22 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { playlistsApi, assetsApi, systemApi } from '../services/api';
 
+const getAssetStatus = (pa) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    if (pa.schedule_end_date) {
+        const end = new Date(pa.schedule_end_date);
+        end.setHours(23, 59, 59, 999);
+        if (now > end) return 'red';
+    }
+    if (pa.schedule_start_date) {
+        const start = new Date(pa.schedule_start_date);
+        start.setHours(0, 0, 0, 0);
+        if (now < start) return 'orange';
+    }
+    return 'green';
+};
 
 function PlaylistEditor() {
     const { id } = useParams();
@@ -54,7 +70,8 @@ function PlaylistEditor() {
     const [refreshing, setRefreshing] = useState(false);
     const [activeFeedback, setActiveFeedback] = useState(null); // 'prev', 'next', 'refresh'
 
-
+    const activeAssets = playlistAssets.filter(pa => getAssetStatus(pa) !== 'red');
+    const inactiveAssets = playlistAssets.filter(pa => getAssetStatus(pa) === 'red');
 
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -177,10 +194,11 @@ function PlaylistEditor() {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        const oldIndex = playlistAssets.findIndex(pa => pa.id === active.id);
-        const newIndex = playlistAssets.findIndex(pa => pa.id === over.id);
+        const oldIndex = activeAssets.findIndex(pa => pa.id === active.id);
+        const newIndex = activeAssets.findIndex(pa => pa.id === over.id);
 
-        const newOrder = arrayMove(playlistAssets, oldIndex, newIndex);
+        const newActiveOrder = arrayMove(activeAssets, oldIndex, newIndex);
+        const newOrder = [...newActiveOrder, ...inactiveAssets];
         setPlaylistAssets(newOrder);
 
         try {
@@ -449,39 +467,75 @@ function PlaylistEditor() {
                                             </button>
                                         </div>
                                     ) : (
-                                        <DndContext
-                                            sensors={sensors}
-                                            collisionDetection={closestCenter}
-                                            onDragEnd={handleDragEnd}
-                                        >
-                                            <SortableContext
-                                                items={playlistAssets.map(pa => pa.id)}
-                                                strategy={verticalListSortingStrategy}
+                                        <>
+                                            <DndContext
+                                                sensors={sensors}
+                                                collisionDetection={closestCenter}
+                                                onDragEnd={handleDragEnd}
                                             >
-                                                {playlistAssets.map((playlistAsset, index) => (
-                                                    <SortableItem
-                                                        key={playlistAsset.id}
-                                                        playlistAsset={playlistAsset}
-                                                        playlistId={selectedPlaylist.id}
-                                                        index={index}
-                                                        onRemove={() => handleRemoveAsset(playlistAsset.id)}
-                                                        onUpdateSchedule={async (data) => {
-                                                            try {
-                                                                await playlistsApi.updateAsset(selectedPlaylist.id, playlistAsset.id, data);
-                                                                const res = await playlistsApi.getAssets(selectedPlaylist.id);
-                                                                setPlaylistAssets(res.data.assets || []);
-                                                                broadcastChange();
-                                                            } catch (error) {
-                                                                console.error('Error updating schedule:', error);
-                                                            }
-                                                        }}
-                                                        getTypeIcon={getTypeIcon}
-                                                        formatDuration={formatDuration}
-                                                    />
-                                                ))}
+                                                <SortableContext
+                                                    items={activeAssets.map(pa => pa.id)}
+                                                    strategy={verticalListSortingStrategy}
+                                                >
+                                                    {activeAssets.map((playlistAsset, index) => (
+                                                        <SortableItem
+                                                            key={playlistAsset.id}
+                                                            playlistAsset={playlistAsset}
+                                                            playlistId={selectedPlaylist.id}
+                                                            index={index}
+                                                            status={getAssetStatus(playlistAsset)}
+                                                            onRemove={() => handleRemoveAsset(playlistAsset.id)}
+                                                            onUpdateSchedule={async (data) => {
+                                                                try {
+                                                                    await playlistsApi.updateAsset(selectedPlaylist.id, playlistAsset.id, data);
+                                                                    const res = await playlistsApi.getAssets(selectedPlaylist.id);
+                                                                    setPlaylistAssets(res.data.assets || []);
+                                                                    broadcastChange();
+                                                                } catch (error) {
+                                                                    console.error('Error updating schedule:', error);
+                                                                }
+                                                            }}
+                                                            getTypeIcon={getTypeIcon}
+                                                            formatDuration={formatDuration}
+                                                        />
+                                                    ))}
 
-                                            </SortableContext>
-                                        </DndContext>
+                                                </SortableContext>
+                                            </DndContext>
+
+                                            {inactiveAssets.length > 0 && (
+                                                <div style={{ marginTop: 'var(--spacing-xl)', borderTop: '1px solid var(--color-border)', paddingTop: 'var(--spacing-md)' }}>
+                                                    <h4 style={{ color: 'var(--color-text-muted)', marginBottom: 'var(--spacing-md)', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                                        Assets inactifs (Date passée)
+                                                    </h4>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', opacity: 0.65 }}>
+                                                        {inactiveAssets.map((playlistAsset, index) => (
+                                                            <SortableItem
+                                                                key={playlistAsset.id}
+                                                                playlistAsset={playlistAsset}
+                                                                playlistId={selectedPlaylist.id}
+                                                                index={index}
+                                                                status="red"
+                                                                disabled={true}
+                                                                onRemove={() => handleRemoveAsset(playlistAsset.id)}
+                                                                onUpdateSchedule={async (data) => {
+                                                                    try {
+                                                                        await playlistsApi.updateAsset(selectedPlaylist.id, playlistAsset.id, data);
+                                                                        const res = await playlistsApi.getAssets(selectedPlaylist.id);
+                                                                        setPlaylistAssets(res.data.assets || []);
+                                                                        broadcastChange();
+                                                                    } catch (error) {
+                                                                        console.error('Error updating schedule:', error);
+                                                                    }
+                                                                }}
+                                                                getTypeIcon={getTypeIcon}
+                                                                formatDuration={formatDuration}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </>
@@ -524,9 +578,10 @@ function PlaylistEditor() {
     );
 }
 
-function SortableItem({ playlistAsset, playlistId, index, onRemove, onUpdateSchedule, getTypeIcon, formatDuration }) {
+function SortableItem({ playlistAsset, playlistId, index, status = 'green', disabled = false, onRemove, onUpdateSchedule, getTypeIcon, formatDuration }) {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-        id: playlistAsset.id
+        id: playlistAsset.id,
+        disabled: disabled
     });
     const [showSchedule, setShowSchedule] = useState(false);
     const [customDuration, setCustomDuration] = useState(playlistAsset.custom_duration || playlistAsset.asset?.duration || 10);
@@ -601,10 +656,14 @@ function SortableItem({ playlistAsset, playlistId, index, onRemove, onUpdateSche
         });
     };
 
+    const statusColor = status === 'green' ? 'var(--color-success, #10b981)' :
+                        status === 'orange' ? 'var(--color-warning, #f59e0b)' :
+                        'var(--color-danger, #ef4444)';
+
     return (
         <div ref={setNodeRef} style={style} className="playlist-item-wrapper">
             <div className="playlist-item">
-                <div {...attributes} {...listeners} className="playlist-item-drag">
+                <div {...attributes} {...listeners} className="playlist-item-drag" style={{ cursor: disabled ? 'default' : 'grab', opacity: disabled ? 0.3 : 1 }}>
                     <GripVertical size={20} />
                 </div>
                 <div style={{
@@ -631,7 +690,16 @@ function SortableItem({ playlistAsset, playlistId, index, onRemove, onUpdateSche
                     )}
                 </div>
                 <div className="playlist-item-info">
-                    <div className="playlist-item-name">{asset?.name || 'Asset inconnu'}</div>
+                    <div className="playlist-item-name" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            backgroundColor: statusColor,
+                            boxShadow: `0 0 5px ${statusColor}80`
+                        }} title={status === 'green' ? 'Actif' : status === 'orange' ? 'En attente (Date future)' : 'Inactif (Date passée)'} />
+                        {asset?.name || 'Asset inconnu'}
+                    </div>
                     <div className="playlist-item-duration">
                         {getTypeIcon(asset?.type)} {asset?.type} • {formatDuration(duration)}
                     </div>
