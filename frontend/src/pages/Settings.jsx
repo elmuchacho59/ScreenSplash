@@ -98,8 +98,13 @@ function Settings() {
             const data = await res.json();
             
             if (res.ok) {
-                setMessage({ type: 'success', text: 'Mise à jour terminée. Redémarrage du système...' });
-                setTimeout(() => window.location.reload(), 15000);
+                if (data.status === 'no_update') {
+                    setMessage({ type: 'success', text: data.message });
+                    setUpdating(false);
+                } else {
+                    setMessage({ type: 'success', text: 'Mise à jour terminée. Redémarrage du système...' });
+                    setTimeout(() => window.location.reload(), 15000);
+                }
             } else {
                 setMessage({ type: 'error', text: data.error || 'Erreur inconnue' });
                 setUpdating(false);

@@ -295,6 +295,9 @@ def trigger_system_update():
             if result.returncode != 0:
                 print(f"[OTA Error] {result.stderr}")
                 return jsonify({'error': 'Update failed', 'details': result.stderr}), 500
+                
+            if "NO_UPDATE_NEEDED" in result.stdout:
+                return jsonify({'message': 'Le système est déjà à la dernière version.', 'status': 'no_update'})
         else:
             return jsonify({'error': 'Update script not found'}), 404
             
