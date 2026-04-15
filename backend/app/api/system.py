@@ -290,9 +290,8 @@ def trigger_system_update():
         script_path = os.path.normpath(script_path)
         
         if os.path.exists(script_path):
-            # Run bash script synchronously
-            # For Windows testing we might skip this or handle git bash
-            result = subprocess.run(['bash', script_path], capture_output=True, text=True)
+            # Utilisation du chemin absolu pour bash
+            result = subprocess.run(['/bin/bash', script_path], capture_output=True, text=True)
             if result.returncode != 0:
                 print(f"[OTA Error] {result.stderr}")
                 return jsonify({'error': 'Update failed', 'details': result.stderr}), 500
